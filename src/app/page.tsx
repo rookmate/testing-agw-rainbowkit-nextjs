@@ -323,6 +323,10 @@ const SubmitTransactionButton = ({ address, sessionClient }) => {
         address: "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA", // NFT contract
         functionName: "mint",
         args: [address, 1],
+        paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391",
+        paymasterInput: getGeneralPaymasterInput({
+          innerInput: "0x",
+        }),
       });
 
       console.log("Transaction sent:", tx);
