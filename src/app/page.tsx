@@ -282,12 +282,12 @@ const SubmitTransactionButton = ({ writeContractSponsored, address, activeSessio
   return (
     <button
       className={`rounded-full border border-solid transition-colors flex items-center justify-center text-white gap-2 text-sm h-10 px-5 font-[family-name:var(--font-roobert)] flex-1 w-[140px]
-        ${!writeContractSponsored
+        ${!activeSession
           ? "bg-gray-500 cursor-not-allowed opacity-50"
           : "bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 border-transparent"
         }`}
       onClick={handleTransaction}
-      disabled={!writeContractSponsored}
+      disabled={!activeSession}
     >
       <svg
         className="w-4 h-4 flex-shrink-0"
@@ -304,7 +304,7 @@ const SubmitTransactionButton = ({ writeContractSponsored, address, activeSessio
         />
       </svg>
       <span className="w-full text-center">
-        {activeSession ? 'Submit with Session' : 'Submit tx'}
+        {activeSession ? 'Mint with Session' : 'Session Required'}
       </span>
     </button>
   );
