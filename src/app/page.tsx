@@ -134,13 +134,13 @@ const SessionKeyManager = ({ address, onSessionCreated }) => {
         <h3 className="text-lg font-semibold mb-2">Session Key Management</h3>
         {sessionKey ? (
           <div className="space-y-2">
-            <p className="text-sm">Session Key Address: {sessionKey.address}</p>
+            <p className="text-sm">Session Key Address</p>
+            <p className="text-xs text-gray-400">{sessionKey.address}</p>
             <p className="text-sm">Expires: {sessionKey.expiresAt.toLocaleString()}</p>
+            <p className="text-sm">Transaction capabilities</p>
+            <p className="text-xs text-gray-400">NFT Minting & Token Transfers</p>
+            <p className="text-sm">Transaction Hash:{' '}</p>
             <p className="text-xs text-gray-400">
-              Transaction capabilities: NFT Minting & Token Transfers
-            </p>
-            <p className="text-xs text-gray-400">
-              Transaction Hash:{' '}
               <a
                 href={`https://explorer.testnet.abs.xyz/tx/${sessionKey.transactionHash}`}
                 target="_blank"
