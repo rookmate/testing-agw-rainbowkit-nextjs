@@ -9,7 +9,7 @@ import { createSessionClient, LimitType } from "@abstract-foundation/agw-client/
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { parseAbi, parseEther, toFunctionSelector, http } from "viem";
+import { parseAbi, parseEther, toFunctionSelector, http, stringify } from "viem";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { abstractTestnet } from "viem/chains";
 
@@ -44,6 +44,49 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
   const [sessionKey, setSessionKey] = useState(null);
   const { createSessionAsync } = useCreateSession();
 
+  // Load session from localStorage on component mount
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const storedSession = localStorage.getItem(`session-${address}`);
+        if (!storedSession || sessionKey) return; // Don't reload if we already have a session
+
+        const parsedSession = JSON.parse(storedSession);
+
+        // Check if session has expired
+        if (new Date(parsedSession.expiresAt) > new Date()) {
+          setSessionKey(parsedSession);
+
+          // Recreate session client
+          const sessionSigner = privateKeyToAccount(parsedSession.privateKey);
+          const sessionClient = createSessionClient({
+            account: address,
+            chain: abstractTestnet,
+            signer: sessionSigner,
+            session: parsedSession.session,
+            transport: http(),
+          });
+
+          // Wrap callbacks in setTimeout to break the render cycle
+          setTimeout(() => {
+            onSessionCreated(parsedSession.session);
+            onSessionClientCreated(sessionClient);
+          }, 0);
+        } else {
+          // Clear expired session
+          localStorage.removeItem(`session-${address}`);
+        }
+      } catch (error) {
+        console.error("Error loading session:", error);
+        localStorage.removeItem(`session-${address}`);
+      }
+    };
+
+    if (address) {
+      loadSession();
+    }
+  }, [address]); // Remove onSessionCreated and onSessionClientCreated from dependencies
+
   const createNewSession = async () => {
     try {
       setIsCreatingSession(true);
@@ -64,7 +107,7 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
           },
           callPolicies: [
             {
-              target: "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA", // NFT contract
+              target: "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA",
               selector: toFunctionSelector("mint(address,uint256)"),
               valueLimit: {
                 limitType: LimitType.Unlimited,
@@ -93,14 +136,19 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
         }),
       });
 
-      // Store session information
-      setSessionKey({
+      const sessionKeyData = {
         privateKey: sessionPrivateKey,
         address: sessionSigner.address,
-        expiresAt: new Date(Number(session.expiresAt) * 1000),
+        expiresAt: new Date(Number(session.expiresAt) * 1000).toISOString(),
         session,
         transactionHash,
-      });
+      };
+
+      // Store session in localStorage
+      localStorage.setItem(`session-${address}`, stringify(sessionKeyData));
+
+      // Update state
+      setSessionKey(sessionKeyData);
 
       // Create session client and pass it to the parent
       const sessionClient = createSessionClient({
@@ -112,13 +160,20 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
       });
 
       onSessionCreated(session);
-      onSessionClientCreated(sessionClient); // Pass session client to parent
+      onSessionClientCreated(sessionClient);
 
     } catch (error) {
       console.error("Error creating session:", error);
     } finally {
       setIsCreatingSession(false);
     }
+  };
+
+  const clearSession = () => {
+    localStorage.removeItem(`session-${address}`);
+    setSessionKey(null);
+    onSessionCreated(null);
+    onSessionClientCreated(null);
   };
 
   return (
@@ -129,7 +184,7 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
           <div className="space-y-2">
             <p className="text-sm">Session Key Address</p>
             <p className="text-xs text-gray-400">{sessionKey.address}</p>
-            <p className="text-sm">Expires: {sessionKey.expiresAt.toLocaleString()}</p>
+            <p className="text-sm">Expires: {new Date(sessionKey.expiresAt).toLocaleString()}</p>
             <p className="text-sm">Transaction capabilities</p>
             <p className="text-xs text-gray-400">NFT Minting & Token Transfers</p>
             <p className="text-sm">Transaction Hash:{' '}</p>
@@ -143,6 +198,12 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
                 {sessionKey.transactionHash?.slice(0, 8)}...{sessionKey.transactionHash?.slice(-6)}
               </a>
             </p>
+            <button
+              className="rounded-full border border-solid border-red-500/20 transition-colors flex items-center justify-center bg-red-500/10 text-red-500 gap-2 hover:bg-red-500/20 text-sm h-10 px-5 font-[family-name:var(--font-roobert)] w-full mt-4"
+              onClick={clearSession}
+            >
+              Revoke Session
+            </button>
           </div>
         ) : (
           <button
@@ -180,18 +241,20 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
 // Wallet connection component
 const WalletConnection = ({ address, logout, writeContractSponsored, transactionReceipt }) => {
   const [activeSession, setActiveSession] = useState(null);
+  const [sessionClient, setSessionClient] = useState(null);
 
   const handleSessionCreated = (session) => {
     setActiveSession(session);
+  };
+
+  const handleSessionClientCreated = (client) => {
+    setSessionClient(client);
   };
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-lg p-6 shadow-lg backdrop-blur-sm max-w-sm w-full">
       <div className="flex flex-col items-center gap-4">
         <div className="text-center">
-          <p className="text-sm sm:text-base font-medium font-[family-name:var(--font-roobert)] mb-1">
-            Connected to Abstract Global Wallet
-          </p>
           <p className="text-xs text-gray-400 font-mono">{address}</p>
           <p className="text-sm sm:text-base font-medium font-[family-name:var(--font-roobert)] mb-1">
             <a
@@ -222,7 +285,7 @@ const WalletConnection = ({ address, logout, writeContractSponsored, transaction
 };
 
 // Wallet action buttons
-const WalletActions = ({ logout, writeContractSponsored, address, activeSession, sessionClient }) => (
+const WalletActions = ({ logout, address, sessionClient }) => (
   <div className="flex gap-2 w-full">
     <button
       className="rounded-full border border-solid border-white/20 transition-colors flex items-center justify-center bg-white/10 text-white gap-2 hover:bg-white/20 text-sm h-10 px-5 font-[family-name:var(--font-roobert)] flex-1"
