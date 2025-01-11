@@ -39,7 +39,7 @@ const TransactionDetails = ({ transactionReceipt }) => {
 };
 
 // Session key management component
-const SessionKeyManager = ({ address, onSessionCreated }) => {
+const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }) => {
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [sessionKey, setSessionKey] = useState(null);
   const { createSessionAsync } = useCreateSession();
@@ -56,11 +56,11 @@ const SessionKeyManager = ({ address, onSessionCreated }) => {
       const { session, transactionHash } = await createSessionAsync({
         session: {
           signer: sessionSigner.address,
-          expiresAt: BigInt(Math.floor(Date.now() / 1000) + 60 * 60 * 24), // 24 hours
+          expiresAt: Math.floor(Date.now() / 1000 + 60 * 60 * 24), // 24 hours
           feeLimit: {
             limitType: LimitType.Lifetime,
             limit: parseEther("1"),
-            period: BigInt(0),
+            period: 0,
           },
           callPolicies: [
             {
@@ -68,10 +68,10 @@ const SessionKeyManager = ({ address, onSessionCreated }) => {
               selector: toFunctionSelector("mint(address,uint256)"),
               valueLimit: {
                 limitType: LimitType.Unlimited,
-                limit: BigInt(0),
-                period: BigInt(0),
+                limit: 0,
+                period: 0,
               },
-              maxValuePerUse: BigInt(0),
+              maxValuePerUse: 0,
               constraints: [],
             }
           ],
@@ -82,7 +82,7 @@ const SessionKeyManager = ({ address, onSessionCreated }) => {
               valueLimit: {
                 limitType: LimitType.Allowance,
                 limit: parseEther("1"),
-                period: BigInt(60 * 60 * 24),
+                period: 60 * 60 * 24,
               },
             }
           ],
@@ -99,10 +99,20 @@ const SessionKeyManager = ({ address, onSessionCreated }) => {
         address: sessionSigner.address,
         expiresAt: new Date(Number(session.expiresAt) * 1000),
         session,
-        transactionHash
+        transactionHash,
+      });
+
+      // Create session client and pass it to the parent
+      const sessionClient = createSessionClient({
+        account: address,
+        chain: abstractTestnet,
+        signer: sessionSigner,
+        session,
+        transport: http(),
       });
 
       onSessionCreated(session);
+      onSessionClientCreated(sessionClient); // Pass session client to parent
 
     } catch (error) {
       console.error("Error creating session:", error);
@@ -110,23 +120,6 @@ const SessionKeyManager = ({ address, onSessionCreated }) => {
       setIsCreatingSession(false);
     }
   };
-
-  // Create session client for transactions
-  useEffect(() => {
-    if (sessionKey) {
-      const sessionSigner = privateKeyToAccount(sessionKey.privateKey);
-      const sessionClient = createSessionClient({
-        account: address,
-        chain: abstractTestnet,
-        signer: sessionSigner,
-        session: sessionKey.session,
-        transport: http(),
-      });
-
-      // Store the session client if needed
-      // You could add this to your state or context if needed for transactions
-    }
-  }, [sessionKey, address]);
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -213,12 +206,14 @@ const WalletConnection = ({ address, logout, writeContractSponsored, transaction
         <SessionKeyManager
           address={address}
           onSessionCreated={handleSessionCreated}
+          onSessionClientCreated={handleSessionClientCreated}
         />
         <WalletActions
           logout={logout}
           writeContractSponsored={writeContractSponsored}
           address={address}
           activeSession={activeSession}
+          sessionClient={sessionClient}
         />
         <TransactionDetails transactionReceipt={transactionReceipt} />
       </div>
@@ -227,7 +222,7 @@ const WalletConnection = ({ address, logout, writeContractSponsored, transaction
 };
 
 // Wallet action buttons
-const WalletActions = ({ logout, writeContractSponsored, address, activeSession }) => (
+const WalletActions = ({ logout, writeContractSponsored, address, activeSession, sessionClient }) => (
   <div className="flex gap-2 w-full">
     <button
       className="rounded-full border border-solid border-white/20 transition-colors flex items-center justify-center bg-white/10 text-white gap-2 hover:bg-white/20 text-sm h-10 px-5 font-[family-name:var(--font-roobert)] flex-1"
@@ -249,45 +244,40 @@ const WalletActions = ({ logout, writeContractSponsored, address, activeSession 
       </svg>
       Disconnect
     </button>
-    <SubmitTransactionButton
-      writeContractSponsored={writeContractSponsored}
-      address={address}
-      activeSession={activeSession}
-    />
+    <SubmitTransactionButton address={address} sessionClient={sessionClient} />
   </div>
 );
 
 // Submit transaction button
-const SubmitTransactionButton = ({ writeContractSponsored, address, activeSession }) => {
-  const handleTransaction = () => {
-    const txConfig = {
-      abi: parseAbi(["function mint(address,uint256) external"]),
-      address: "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA",
-      functionName: "mint",
-      args: [address, BigInt(1)],
-      paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391",
-      paymasterInput: getGeneralPaymasterInput({
-        innerInput: "0x",
-      }),
-    };
+const SubmitTransactionButton = ({ address, sessionClient }) => {
+  const handleTransaction = async () => {
+    if (!sessionClient) return;
 
-    if (activeSession) {
-      // Add session key specific parameters
-      txConfig.session = activeSession;
+    try {
+      // Mint the NFT using sessionClient
+      const tx = await sessionClient.writeContract({
+        abi: parseAbi(["function mint(address,uint256) external"]),
+        address: "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA", // NFT contract
+        functionName: "mint",
+        args: [address, 1],
+      });
+
+      console.log("Transaction sent:", tx);
+
+    } catch (error) {
+      console.error("Error executing transaction:", error);
     }
-
-    writeContractSponsored(txConfig);
   };
 
   return (
     <button
       className={`rounded-full border border-solid transition-colors flex items-center justify-center text-white gap-2 text-sm h-10 px-5 font-[family-name:var(--font-roobert)] flex-1 w-[140px]
-        ${!activeSession
+        ${!sessionClient
           ? "bg-gray-500 cursor-not-allowed opacity-50"
           : "bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 border-transparent"
         }`}
       onClick={handleTransaction}
-      disabled={!activeSession}
+      disabled={!sessionClient}
     >
       <svg
         className="w-4 h-4 flex-shrink-0"
@@ -304,7 +294,7 @@ const SubmitTransactionButton = ({ writeContractSponsored, address, activeSessio
         />
       </svg>
       <span className="w-full text-center">
-        {activeSession ? 'Mint with Session' : 'Session Required'}
+        {sessionClient ? 'Mint with Session' : 'Session Required'}
       </span>
     </button>
   );
