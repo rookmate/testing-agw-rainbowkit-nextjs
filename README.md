@@ -19,7 +19,7 @@ The provided code integrates RainbowKit with Abstract's Global Wallet (AGW) in a
 	- There is usefulness in maintaining the same address as you may fetch the session key data from `0xEcC560d914c6710f0d7920ff8424060b86448DF8` since the event `SessionCreated` and `SessionRevoked` will let you know if your application has active sessions for that user.
 	- I stored the session in the browser `localStorage` in plain text for this example repository as it makes it easier to debug and visualize the information. Consider more secure options for your application.
 - Both the `createSessionAsync` and `revokeSessionsAsync` can be sponsored transactions if you add the paymaster details. See the [Line 103](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L103) and [Line 171](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L171) of `page.tsx`.
-- Sessions can be very specific. For instance, in this example ([Line 112](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L112)) I only allow mint calls to my ERC20 token.
+- Sessions can be tailored to your application and focused in scope. For instance, in this example ([Line 112](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L112)) I only allow mint calls to my ERC20 token.
 
 ### Detailed implementation steps:
 
