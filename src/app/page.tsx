@@ -94,6 +94,10 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
       setIsCreatingSession(true);
 
       // Generate session key
+      // If this is stored somewhere it could
+      // Be reused to create the same session address and session
+      // Fetch the session key data from 0xEcC560d914c6710f0d7920ff8424060b86448DF8
+      // From the event SessionCreated(address indexed account, bytes32 indexed sessionHash, SessionLib.SessionSpec sessionSpec)
       const sessionPrivateKey = generatePrivateKey();
       const sessionSigner = privateKeyToAccount(sessionPrivateKey);
 
