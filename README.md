@@ -65,6 +65,11 @@ The provided code integrates RainbowKit with Abstract's Global Wallet (AGW) in a
        class TC contract
 ```
 
+### Byproducts
+By trying this I ended up proposing to minor improvements:
+1. [Fix Peer Dependency Conflict in @privy-io/react-auth in agw-rainbowkit-nextjs](https://github.com/Abstract-Foundation/examples/pull/18)
+1. [Add missing paymaster params to paymaster example in the documentaion](https://github.com/Abstract-Foundation/abstract-docs/pull/45)
+
 ### Detailed implementation steps:
 
 1. Set Up the Abstract Global Wallet with RainbowKit ([original instructions](https://github.com/Abstract-Foundation/examples/blob/main/agw-rainbowkit-nextjs/README.md))
