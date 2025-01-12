@@ -2,11 +2,26 @@ The provided code integrates RainbowKit with Abstract's Global Wallet (AGW) in a
 - Connect their AGW
 - Create a session key for the AGW sponsored by the Abstract Paymaster
 - Sponsored mint ERC20 tokens without manual approval for each transaction due to the session keys
-   - Contract may be found [here](https://github.com/rookmate/testing-abstract-erc20-zksync/blob/main/src/SimpleToken.sol) and deployed to [`0x29015fde8cB58126E17e5Ac46bb306a1D7339B59`](https://explorer.testnet.abs.xyz/address/0x29015fde8cB58126E17e5Ac46bb306a1D7339B59) on Abstract Testnet
+   - [Contract source code](https://github.com/rookmate/testing-abstract-erc20-zksync/blob/main/src/SimpleToken.sol)
+   - Deployed to [`0x29015fde8cB58126E17e5Ac46bb306a1D7339B59`](https://explorer.testnet.abs.xyz/address/0x29015fde8cB58126E17e5Ac46bb306a1D7339B59) on Abstract Testnet
 - Revoke the session key for the AGW sponsored by the Abstract Paymaster
 - Disconnect their AGW
 
-### Implementation steps:
+### Key takeaways
+
+- Leverage [`useCreateSession`](https://docs.abs.xyz/abstract-global-wallet/agw-react/hooks/useCreateSession) React hook to create a session key for the connected Abstract Global Wallet.
+- Where you decide to create and store
+  ```tsx
+  const sessionPrivateKey =  generatePrivateKey();
+  ```
+  will dictate if your application will generate different private keys or always the same.
+	- In my implementation I chose to generate new private keys every time but you may want to keep the same.
+	- There is usefulness in maintaining the same address as you may fetch the session key data from `0xEcC560d914c6710f0d7920ff8424060b86448DF8` since the event `SessionCreated` and `SessionRevoked` will let you know if your application has active sessions for that user.
+	- I stored the session in the browser `localStorage` in plain text for this example repository as it makes it easier to debug and visualize the information. Consider more secure options for your application.
+- Both the `createSessionAsync` and `revokeSessionsAsync` can be sponsored transactions if you add the paymaster details. See the [Line 103](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L103) and [Line 171](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L171) of `page.tsx`.
+- Sessions can be very specific. For instance, in this example ([Line 112](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L112)) I only allow mint calls to my ERC20 token.
+
+### Detailed implementation steps:
 
 1. Set Up the Abstract Global Wallet with RainbowKit ([original instructions](https://github.com/Abstract-Foundation/examples/blob/main/agw-rainbowkit-nextjs/README.md))
 
