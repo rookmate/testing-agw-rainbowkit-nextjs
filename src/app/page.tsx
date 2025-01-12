@@ -165,7 +165,10 @@ const SessionKeyManager: React.FC<SessionKeyManagerProps> = ({
         await revokeSessionsAsync({
           sessions: [sessionKey.session],
           paymaster: paymasterContractAddress as `0x${string}`,
-        });
+          paymasterInput: getGeneralPaymasterInput({
+            innerInput: "0x",
+          }),
+        } as any); // Bypassing the error where paymaster and paymasterInput is not recognized as valid params
 
         // Clear local storage and state
         localStorage.removeItem(`session-${address}`);
@@ -404,7 +407,7 @@ const SubmitTransactionButton: React.FC<SubmitTransactionButtonProps> = ({
         paymasterInput: getGeneralPaymasterInput({
           innerInput: "0x",
         }),
-      });
+      } as any); // Bypassing the error where paymaster and paymasterInput is not recognized as valid params
 
       onMintComplete(tx);
     } catch (error) {
