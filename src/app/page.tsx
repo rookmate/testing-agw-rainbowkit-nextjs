@@ -8,8 +8,8 @@ import { createSessionClient, LimitType } from "@abstract-foundation/agw-client/
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
+import { parseAbi, parseEther, toFunctionSelector, createPublicClient, http, stringify, formatUnits } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { parseAbi, parseEther, toFunctionSelector, http, stringify } from "viem";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { abstractTestnet } from "viem/chains";
 
@@ -17,27 +17,25 @@ import BackgroundEffects from "@/components/BackgroundEffects";
 import HeaderSection from "@/components/HeaderSection";
 import ResourceCards from "@/components/ResourceCards";
 
-// Transaction details component
-const TransactionDetails = ({ transactionReceipt }) => {
-  if (!transactionReceipt) return null;
-
-  return (
-    <div className="text-center mt-4 w-full">
-      <p className="text-sm sm:text-base font-medium font-[family-name:var(--font-roobert)] mb-1">
-        Mint transaction:&nbsp;
-        <a
-          href={`https://explorer.testnet.abs.xyz/tx/${transactionReceipt?.transactionHash}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-gray-400 font-mono hover:text-white"
-        >
-          {transactionReceipt?.transactionHash?.slice(0, 8)}...
-          {transactionReceipt?.transactionHash?.slice(-6)}
-        </a>
-      </p>
-    </div>
-  );
-};
+// Contract details
+const paymasterContractAddress = "0x5407B5040dec3D339A9247f3654E59EEccbb6391";
+const tokenContractAddress = "0x29015fde8cB58126E17e5Ac46bb306a1D7339B59";
+const tokenAbi = [
+  {
+    name: "balanceOf",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ name: "balance", type: "uint256" }]
+  },
+  {
+    name: "decimals",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "decimals", type: "uint8" }]
+  }
+];
 
 // Session key management component
 const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }) => {
@@ -113,7 +111,7 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
           },
           callPolicies: [
             {
-              target: "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA",
+              target: tokenContractAddress,
               selector: toFunctionSelector("mint(address,uint256)"),
               valueLimit: {
                 limitType: LimitType.Unlimited,
@@ -136,7 +134,7 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
             }
           ],
         },
-        paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391",
+        paymaster: paymasterContractAddress,
         paymasterInput: getGeneralPaymasterInput({
           innerInput: "0x",
         }),
@@ -183,7 +181,7 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
         // Revoke the session using revokeSessionsAsync
         await revokeSessionsAsync({
           sessions: sessionKey.session,
-          paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391",
+          paymaster: paymasterContractAddress,
           paymasterInput: getGeneralPaymasterInput({
             innerInput: "0x",
           }),
@@ -267,9 +265,61 @@ const WalletConnection = ({ address, logout }) => {
   const [activeSession, setActiveSession] = useState(null);
   const [sessionClient, setSessionClient] = useState(null);
   const [mintTransactionHash, setMintTransactionHash] = useState(null);
+  const [tokenBalance, setTokenBalance] = useState(null);
+  const [isLoadingTokenBalance, setIsLoadingTokenBalance] = useState(false);
+
   const { data: mintTransactionReceipt } = useWaitForTransactionReceipt({
     hash: mintTransactionHash,
   });
+
+  const [publicClient] = useState(() =>
+    createPublicClient({
+      chain: abstractTestnet,
+      transport: http()
+    })
+  );
+
+  // Fetch token balance
+  useEffect(() => {
+    const fetchTokenBalance = async () => {
+      if (!address || !publicClient) return;
+
+      try {
+        setIsLoadingTokenBalance(true);
+
+        // Create the contract config
+        const tokenContract = {
+          address: tokenContractAddress,
+          abi: tokenAbi,
+        };
+
+        // Get token decimals
+        const decimals = await publicClient.readContract({
+          ...tokenContract,
+          functionName: "decimals",
+        });
+
+        // Get the token balance
+        const balance = await publicClient.readContract({
+          ...tokenContract,
+          functionName: "balanceOf",
+          args: [address],
+        });
+
+        // Format the balance using decimals
+        const formattedBalance = formatUnits(balance, decimals);
+        setTokenBalance(formattedBalance);
+      } catch (error) {
+        console.error("Error fetching token balance:", error);
+        setTokenBalance("0");
+      } finally {
+        setIsLoadingTokenBalance(false);
+      }
+    };
+
+    // Add mintTransactionReceipt to dependency array to refetch after minting
+    fetchTokenBalance();
+  }, [address, publicClient, mintTransactionReceipt]);
 
   const handleSessionCreated = (session) => {
     setActiveSession(session);
@@ -288,6 +338,18 @@ const WalletConnection = ({ address, logout }) => {
       <div className="flex flex-col items-center gap-4">
         <div className="text-center">
           <p className="text-xs text-gray-400 font-mono">{address}</p>
+          <p className="text-sm sm:text-base font-medium font-[family-name:var(--font-roobert)] mb-1">
+            {isLoadingTokenBalance ? (
+              "Loading token balance..."
+            ) : (
+              <>
+                Token Balance:{" "}
+                <span className="text-sm font-mono text-gray-300">
+                  {tokenBalance ?? "0"} ROOKs
+                </span>
+              </>
+            )}
+          </p>
           <p className="text-sm sm:text-base font-medium font-[family-name:var(--font-roobert)] mb-1">
             <a
               href={`https://explorer.testnet.abs.xyz/address/${address}`}
@@ -310,7 +372,6 @@ const WalletConnection = ({ address, logout }) => {
           sessionClient={sessionClient}
           onMintComplete={handleMintComplete}
         />
-        <TransactionDetails transactionReceipt={mintTransactionReceipt} />
       </div>
     </div>
   );
@@ -355,10 +416,10 @@ const SubmitTransactionButton = ({ address, sessionClient, onMintComplete }) => 
     try {
       const tx = await sessionClient.writeContract({
         abi: parseAbi(["function mint(address,uint256) external"]),
-        address: "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA",
+        address: tokenContractAddress,
         functionName: "mint",
-        args: [address, 1],
-        paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391",
+        args: [address, 10000000000000000000], // Mint 10 token units
+        paymaster: paymasterContractAddress,
         paymasterInput: getGeneralPaymasterInput({
           innerInput: "0x",
         }),
@@ -394,7 +455,7 @@ const SubmitTransactionButton = ({ address, sessionClient, onMintComplete }) => 
         />
       </svg>
       <span className="w-full text-center">
-        {sessionClient ? 'Mint with Session' : 'Session Required'}
+        {sessionClient ? 'Gib tokens' : 'Session Required'}
       </span>
     </button>
   );
