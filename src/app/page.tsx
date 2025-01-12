@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 
-import { useCreateSession, useLoginWithAbstract, useWriteContractSponsored, useRevokeSessions } from "@abstract-foundation/agw-react";
+import { useCreateSession, useLoginWithAbstract, useRevokeSessions } from "@abstract-foundation/agw-react";
 import { createSessionClient, LimitType } from "@abstract-foundation/agw-client/sessions";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -16,6 +16,13 @@ import { abstractTestnet } from "viem/chains";
 import BackgroundEffects from "@/components/BackgroundEffects";
 import HeaderSection from "@/components/HeaderSection";
 import ResourceCards from "@/components/ResourceCards";
+import type {
+  SessionKeyManagerProps,
+  WalletConnectionProps,
+  WalletActionsProps,
+  SubmitTransactionButtonProps,
+  SessionKeyData
+} from '@/types/wallet';
 
 // Contract details
 const paymasterContractAddress = "0x5407B5040dec3D339A9247f3654E59EEccbb6391";
@@ -38,9 +45,12 @@ const tokenAbi = [
 ];
 
 // Session key management component
-const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }) => {
+const SessionKeyManager: React.FC<SessionKeyManagerProps> = ({
+  address,
+  onSessionClientCreated
+}) => {
   const [isCreatingSession, setIsCreatingSession] = useState(false);
-  const [sessionKey, setSessionKey] = useState(null);
+  const [sessionKey, setSessionKey] = useState<SessionKeyData | null>(null);
   const { createSessionAsync } = useCreateSession();
   const { revokeSessionsAsync } = useRevokeSessions();
 
@@ -60,7 +70,7 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
           // Recreate session client
           const sessionSigner = privateKeyToAccount(parsedSession.privateKey);
           const sessionClient = createSessionClient({
-            account: address,
+            account: address as `0x${string}`,
             chain: abstractTestnet,
             signer: sessionSigner,
             session: parsedSession.session,
@@ -69,7 +79,6 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
 
           // Wrap callbacks in setTimeout to break the render cycle
           setTimeout(() => {
-            onSessionCreated(parsedSession.session);
             onSessionClientCreated(sessionClient);
           }, 0);
         } else {
@@ -147,14 +156,13 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
 
       // Create session client and pass it to the parent
       const sessionClient = createSessionClient({
-        account: address,
+        account: address as `0x${string}`,
         chain: abstractTestnet,
         signer: sessionSigner,
         session,
         transport: http(),
       });
 
-      onSessionCreated(session);
       onSessionClientCreated(sessionClient);
 
     } catch (error) {
@@ -169,17 +177,13 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
       if (sessionKey) {
         // Revoke the session using revokeSessionsAsync
         await revokeSessionsAsync({
-          sessions: sessionKey.session,
-          paymaster: paymasterContractAddress,
-          paymasterInput: getGeneralPaymasterInput({
-            innerInput: "0x",
-          }),
+          sessions: [sessionKey.session],
+          paymaster: paymasterContractAddress as `0x${string}`,
         });
 
         // Clear local storage and state
         localStorage.removeItem(`session-${address}`);
         setSessionKey(null);
-        onSessionCreated(null);
         onSessionClientCreated(null);
       }
     } catch (error) {
@@ -250,15 +254,17 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
 };
 
 // Wallet connection component
-const WalletConnection = ({ address, logout }) => {
-  const [activeSession, setActiveSession] = useState(null);
+const WalletConnection: React.FC<WalletConnectionProps> = ({
+  address,
+  logout
+}) => {
   const [sessionClient, setSessionClient] = useState(null);
-  const [mintTransactionHash, setMintTransactionHash] = useState(null);
-  const [tokenBalance, setTokenBalance] = useState(null);
+  const [tokenBalance, setTokenBalance] = useState<string | null>(null);
+  const [mintTransactionHash, setMintTransactionHash] = useState<`0x${string}` | null>(null);
   const [isLoadingTokenBalance, setIsLoadingTokenBalance] = useState(false);
 
   const { data: mintTransactionReceipt } = useWaitForTransactionReceipt({
-    hash: mintTransactionHash,
+    hash: mintTransactionHash as `0x${string}`,
   });
 
   const [publicClient] = useState(() =>
@@ -276,26 +282,20 @@ const WalletConnection = ({ address, logout }) => {
       try {
         setIsLoadingTokenBalance(true);
 
-        // Create the contract config
-        const tokenContract = {
-          address: tokenContractAddress,
-          abi: tokenAbi,
-        };
-
-        // Get token decimals
         const decimals = await publicClient.readContract({
-          ...tokenContract,
+          address: tokenContractAddress as `0x${string}`,
+          abi: tokenAbi,
           functionName: "decimals",
-        });
+        } as const);
 
-        // Get the token balance
         const balance = await publicClient.readContract({
-          ...tokenContract,
+          address: tokenContractAddress as `0x${string}`,
+          abi: tokenAbi,
           functionName: "balanceOf",
-          args: [address],
-        });
+          args: [address as `0x${string}`],
+        } as const);
 
-        // Format the balance using decimals
+        // Format the balance
         const formattedBalance = formatUnits(balance, decimals);
         setTokenBalance(formattedBalance);
       } catch (error) {
@@ -310,15 +310,11 @@ const WalletConnection = ({ address, logout }) => {
     fetchTokenBalance();
   }, [address, publicClient, mintTransactionReceipt]);
 
-  const handleSessionCreated = (session) => {
-    setActiveSession(session);
-  };
-
-  const handleSessionClientCreated = (client) => {
+  const handleSessionClientCreated = (client: SessionClient | null) => {
     setSessionClient(client);
   };
 
-  const handleMintComplete = (hash) => {
+  const handleMintComplete = (hash: `0x${string}`) => {
     setMintTransactionHash(hash);
   };
 
@@ -351,13 +347,11 @@ const WalletConnection = ({ address, logout }) => {
         </div>
         <SessionKeyManager
           address={address}
-          onSessionCreated={handleSessionCreated}
           onSessionClientCreated={handleSessionClientCreated}
         />
         <WalletActions
           logout={logout}
           address={address}
-          activeSession={activeSession}
           sessionClient={sessionClient}
           onMintComplete={handleMintComplete}
         />
@@ -367,47 +361,59 @@ const WalletConnection = ({ address, logout }) => {
 };
 
 // Wallet action buttons
-const WalletActions = ({ logout, address, sessionClient, onMintComplete }) => (
-  <div className="flex gap-2 w-full">
-    <button
-      className="rounded-full border border-solid border-white/20 transition-colors flex items-center justify-center bg-white/10 text-white gap-2 hover:bg-white/20 text-sm h-10 px-5 font-[family-name:var(--font-roobert)] flex-1"
-      onClick={logout}
-    >
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
+const WalletActions: React.FC<WalletActionsProps> = ({
+  logout,
+  address,
+  sessionClient,
+  onMintComplete
+}) => {
+  return (
+    <div className="flex gap-2 w-full">
+      <button
+        className="rounded-full border border-solid border-white/20 transition-colors flex items-center justify-center bg-white/10 text-white gap-2 hover:bg-white/20 text-sm h-10 px-5 font-[family-name:var(--font-roobert)] flex-1"
+        onClick={logout}
       >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-        />
-      </svg>
-      Disconnect
-    </button>
-    <SubmitTransactionButton
-      address={address}
-      sessionClient={sessionClient}
-      onMintComplete={onMintComplete}
-    />
-  </div>
-);
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+          />
+        </svg>
+        Disconnect
+      </button>
+      <SubmitTransactionButton
+        address={address}
+        sessionClient={sessionClient}
+        onMintComplete={onMintComplete}
+      />
+    </div>
+  );
+};
 
 // Submit transaction button
-const SubmitTransactionButton = ({ address, sessionClient, onMintComplete }) => {
+const SubmitTransactionButton: React.FC<SubmitTransactionButtonProps> = ({
+  address,
+  sessionClient,
+  onMintComplete
+}) => {
   const handleTransaction = async () => {
     if (!sessionClient) return;
 
     try {
+      const mintAmount = BigInt("10000000000000000000"); // Mint 10 token units
       const tx = await sessionClient.writeContract({
         abi: parseAbi(["function mint(address,uint256) external"]),
         address: tokenContractAddress,
         functionName: "mint",
-        args: [address, 10000000000000000000], // Mint 10 token units
+        args: [address as `0x${string}`, mintAmount],
         paymaster: paymasterContractAddress,
         paymasterInput: getGeneralPaymasterInput({
           innerInput: "0x",
@@ -454,10 +460,6 @@ const SubmitTransactionButton = ({ address, sessionClient, onMintComplete }) => 
 export default function Home() {
   const { logout } = useLoginWithAbstract();
   const { address, status } = useAccount();
-  const { writeContractSponsored, data: transactionHash } = useWriteContractSponsored();
-  const { data: transactionReceipt } = useWaitForTransactionReceipt({
-    hash: transactionHash,
-  });
 
   return (
     <div className="relative grid grid-rows-[1fr_auto] min-h-screen p-8 pb-20 sm:p-20 font-[family-name:var(--font-avenue-mono)] bg-black overflow-hidden">
@@ -480,8 +482,6 @@ export default function Home() {
               <WalletConnection
                 address={address}
                 logout={logout}
-                writeContractSponsored={writeContractSponsored}
-                transactionReceipt={transactionReceipt}
               />
             ) : status === "reconnecting" || status === "connecting" ? (
               <div className="animate-spin">
