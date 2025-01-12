@@ -2,8 +2,8 @@ The provided code integrates RainbowKit with Abstract's Global Wallet (AGW) in a
 - Connect their AGW
 - Create a session key for the AGW sponsored by the Abstract Paymaster
 - Sponsored mint ERC20 tokens without manual approval for each transaction due to the session keys
-   - [Contract source code](https://github.com/rookmate/testing-abstract-erc20-zksync/blob/main/src/SimpleToken.sol)
-   - Deployed to [`0x29015fde8cB58126E17e5Ac46bb306a1D7339B59`](https://explorer.testnet.abs.xyz/address/0x29015fde8cB58126E17e5Ac46bb306a1D7339B59) on Abstract Testnet
+   - See the [Contract source code here](https://github.com/rookmate/testing-abstract-erc20-zksync/blob/main/src/SimpleToken.sol)
+   - Deployed on Abstract Testnet to [`0x29015fde8cB58126E17e5Ac46bb306a1D7339B59`](https://explorer.testnet.abs.xyz/address/0x29015fde8cB58126E17e5Ac46bb306a1D7339B59)
 - Revoke the session key for the AGW sponsored by the Abstract Paymaster
 - Disconnect their AGW
 
@@ -20,6 +20,49 @@ The provided code integrates RainbowKit with Abstract's Global Wallet (AGW) in a
 	- I stored the session in the browser `localStorage` in plain text for this example repository as it makes it easier to debug and visualize the information. Consider more secure options for your application.
 - Both the `createSessionAsync` and `revokeSessionsAsync` can be sponsored transactions if you add the paymaster details. See the [Line 103](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L103) and [Line 171](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L171) of `page.tsx`.
 - Sessions can be tailored to your application and focused in scope. For instance, in this example ([Line 112](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L112)) I only allow mint calls to my ERC20 token.
+
+### Application Flow
+```mermaid
+   graph TD
+       Home[Home Page Component] --> BE[BackgroundEffects]
+       Home --> Main[Main Content]
+       Main --> HS[HeaderSection]
+       Main --> WC[WalletConnection]
+       Main --> RC[ResourceCards]
+
+       WC --> SKM[SessionKeyManager]
+       WC --> WA[WalletActions]
+
+       SKM -->|Manages| SK[Session Key State]
+       SKM -->|Creates| SC[Session Client]
+
+       WA --> DB[Disconnect Button]
+       WA --> STB[SubmitTransactionButton]
+
+       subgraph "State Management"
+           SK -->|Updates| AC[Active Session]
+           SC -->|Enables| TX[Transactions]
+       end
+
+       subgraph "Contract Interactions"
+           STB -->|Calls| TC[Token Contract]
+           TC -->|Updates| TB[Token Balance]
+       end
+
+       subgraph "Authentication Flow"
+           WC -->|Checks| AS[Account Status]
+           AS -->|Connected| SKM
+           AS -->|Not Connected| CB[ConnectButton]
+       end
+
+       classDef component fill:#2d3748,stroke:#4a5568,stroke-width:2px,color:#fff
+       classDef state fill:#1a202c,stroke:#2d3748,stroke-width:2px,color:#fff
+       classDef contract fill:#553c9a,stroke:#6b46c1,stroke-width:2px,color:#fff
+
+       class Home,BE,Main,HS,WC,RC,SKM,WA,STB,DB component
+       class SK,SC,AC,TX,AS,TB state
+       class TC contract
+```
 
 ### Detailed implementation steps:
 
