@@ -2,6 +2,7 @@ The provided code integrates RainbowKit with Abstract's Global Wallet (AGW) in a
 - Connect their AGW
 - Create a session key for the AGW sponsored by the Abstract Paymaster
 - Sponsored mint ERC20 tokens without manual approval for each transaction due to the session keys
+   - Contract may be found [here](https://github.com/rookmate/testing-abstract-erc20-zksync/blob/main/src/SimpleToken.sol) and deployed to [`0x29015fde8cB58126E17e5Ac46bb306a1D7339B59`](https://explorer.testnet.abs.xyz/address/0x29015fde8cB58126E17e5Ac46bb306a1D7339B59) on Abstract Testnet
 - Revoke the session key for the AGW sponsored by the Abstract Paymaster
 - Disconnect their AGW
 
@@ -32,10 +33,10 @@ The provided code integrates RainbowKit with Abstract's Global Wallet (AGW) in a
       Visit [http://localhost:3000](http://localhost:3000) to see the app.
 
 2. Implement Session Key Creation:
-   - After user login, utilize AGW's session key API to create a session key with permissions for token minting.
+   - After user login, utilize AGW's session key API to create a session key with permissions for token minting
    - Store the session key
    - For detailed guidance, refer to [Abstract's documentation on session keys](https://docs.abs.xyz/abstract-global-wallet/agw-client/session-keys/overview)
 
 3. Mint ERC20 Tokens Using the Session Key:
-   - Set up a function to interact with the ERC20 contract's minting function.
-   - Use the session key to sign and send the mint transaction on behalf of the user.
+   - Set up a function to interact with the ERC20 contract's minting function
+   - Use the session key to sign and send the mint transaction on behalf of the user

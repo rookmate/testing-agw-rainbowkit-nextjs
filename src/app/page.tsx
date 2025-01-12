@@ -122,17 +122,6 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
               constraints: [],
             }
           ],
-          transferPolicies: [
-            {
-              target: address,
-              maxValuePerUse: parseEther("0.1"),
-              valueLimit: {
-                limitType: LimitType.Allowance,
-                limit: parseEther("1"),
-                period: 60 * 60 * 24,
-              },
-            }
-          ],
         },
         paymaster: paymasterContractAddress,
         paymasterInput: getGeneralPaymasterInput({
