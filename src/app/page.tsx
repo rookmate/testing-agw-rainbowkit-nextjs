@@ -44,6 +44,7 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [sessionKey, setSessionKey] = useState(null);
   const { createSessionAsync } = useCreateSession();
+  const { revokeSessionsAsync } = useRevokeSessions();
 
   // Load session from localStorage on component mount
   useEffect(() => {
@@ -86,7 +87,7 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
     if (address) {
       loadSession();
     }
-  }, [address]); // Remove onSessionCreated and onSessionClientCreated from dependencies
+  }, [address]);
 
   const createNewSession = async () => {
     try {
@@ -131,6 +132,10 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
             }
           ],
         },
+        paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391",
+        paymasterInput: getGeneralPaymasterInput({
+          innerInput: "0x",
+        }),
       });
 
       const sessionKeyData = {
@@ -168,11 +173,27 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
     }
   };
 
-  const clearSession = () => {
-    localStorage.removeItem(`session-${address}`);
-    setSessionKey(null);
-    onSessionCreated(null);
-    onSessionClientCreated(null);
+  const clearSession = async () => {
+    try {
+      if (sessionKey) {
+        // Revoke the session using revokeSessionsAsync
+        await revokeSessionsAsync({
+          sessions: sessionKey.session,
+          paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391",
+          paymasterInput: getGeneralPaymasterInput({
+            innerInput: "0x",
+          }),
+        });
+
+        // Clear local storage and state
+        localStorage.removeItem(`session-${address}`);
+        setSessionKey(null);
+        onSessionCreated(null);
+        onSessionClientCreated(null);
+      }
+    } catch (error) {
+      console.error("Error revoking session:", error);
+    }
   };
 
   return (
