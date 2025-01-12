@@ -20,6 +20,7 @@ The provided code integrates RainbowKit with Abstract's Global Wallet (AGW) in a
 	- I stored the session in the browser `localStorage` in plain text for this example repository as it makes it easier to debug and visualize the information. Consider more secure options for your application.
 - Both the `createSessionAsync` and `revokeSessionsAsync` can be sponsored transactions if you add the paymaster details. See the [Line 103](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L103) and [Line 171](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L171) of `page.tsx`.
 - Sessions can be tailored to your application and focused in scope. For instance, in this example ([Line 112](https://github.com/rookmate/testing-agw-rainbowkit-nextjs/blob/main/src/app/page.tsx#L112)) I only allow mint calls to my ERC20 token.
+   - To deploy your own zkSync solidity contract just follow [these steps](https://docs.abs.xyz/build-on-abstract/smart-contracts/foundry) as you will need to use the foundry-zksync fork.
 
 ### Application Flow
 ```mermaid
