@@ -7,6 +7,37 @@ The provided code integrates RainbowKit with Abstract's Global Wallet (AGW) in a
 - Revoke the session key for the AGW sponsored by the Abstract Paymaster
 - Disconnect their AGW
 
+### Installation steps
+To run the repository, here are the detailed steps:
+
+1. **Clone the Repository**
+   Open a terminal and run the following command:
+   ```bash
+   git clone https://github.com/rookmate/testing-agw-rainbowkit-nextjs.git
+   ```
+
+1. **Navigate to the Directory**
+   Move into the newly cloned repository:
+   ```bash
+   cd testing-agw-rainbowkit-nextjs
+   ```
+
+1. **Install Dependencies**
+   Use `npm` to install the required packages:
+   ```bash
+   npm install
+   ```
+
+1. **Run the Development Server**
+   Start the development server with:
+   ```bash
+   npm run dev
+   ```
+
+1. **Access the Application**
+   Open your web browser and navigate to:
+   [http://localhost:3000](http://localhost:3000)
+
 ### Key takeaways
 
 - Leverage [`useCreateSession`](https://docs.abs.xyz/abstract-global-wallet/agw-react/hooks/useCreateSession) React hook to create a session key for the connected Abstract Global Wallet.
