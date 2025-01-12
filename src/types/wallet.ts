@@ -1,5 +1,7 @@
 import type { SessionConfig, SessionClient } from "@abstract-foundation/agw-client/sessions";
 
+import { tokenAbi } from '@/abis/RookToken';
+
 export interface SessionKeyData {
   privateKey: `0x${string}`;
   address: `0x${string}`;

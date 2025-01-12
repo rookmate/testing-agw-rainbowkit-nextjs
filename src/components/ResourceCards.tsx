@@ -1,6 +1,15 @@
 "use client";
 
-const ResourceCard = ({ href, icon, title, description }) => (
+import { ReactNode } from 'react';
+
+interface ResourceCardProps {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  description: string;
+}
+
+const ResourceCard = ({ href, icon, title, description }: ResourceCardProps) => (
   <a
     href={href}
     target="_blank"
@@ -14,7 +23,7 @@ const ResourceCard = ({ href, icon, title, description }) => (
 );
 
 const ResourceCards = () => {
-  const resources = [
+  const resources: ResourceCardProps[] = [
     {
       href: "https://docs.abs.xyz",
       icon: <svg className="w-6 h-6 mb-2 opacity-70" viewBox="0 0 24 24" fill="currentColor">

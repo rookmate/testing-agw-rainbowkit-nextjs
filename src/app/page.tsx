@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 
 import { useCreateSession, useLoginWithAbstract, useRevokeSessions } from "@abstract-foundation/agw-react";
 import { createSessionClient, LimitType } from "@abstract-foundation/agw-client/sessions";
+import type { SessionClient } from "@abstract-foundation/agw-client/sessions";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
@@ -21,28 +22,13 @@ import type {
   WalletConnectionProps,
   WalletActionsProps,
   SubmitTransactionButtonProps,
-  SessionKeyData
+  SessionKeyData,
 } from '@/types/wallet';
+import { tokenAbi } from '@/abis/RookToken';
 
 // Contract details
 const paymasterContractAddress = "0x5407B5040dec3D339A9247f3654E59EEccbb6391";
 const tokenContractAddress = "0x29015fde8cB58126E17e5Ac46bb306a1D7339B59";
-const tokenAbi = [
-  {
-    name: "balanceOf",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "owner", type: "address" }],
-    outputs: [{ name: "balance", type: "uint256" }]
-  },
-  {
-    name: "decimals",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "decimals", type: "uint8" }]
-  }
-];
 
 // Session key management component
 const SessionKeyManager: React.FC<SessionKeyManagerProps> = ({
@@ -258,7 +244,7 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
   address,
   logout
 }) => {
-  const [sessionClient, setSessionClient] = useState(null);
+  const [sessionClient, setSessionClient] = useState<SessionClient | null>(null);
   const [tokenBalance, setTokenBalance] = useState<string | null>(null);
   const [mintTransactionHash, setMintTransactionHash] = useState<`0x${string}` | null>(null);
   const [isLoadingTokenBalance, setIsLoadingTokenBalance] = useState(false);
@@ -286,14 +272,14 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
           address: tokenContractAddress as `0x${string}`,
           abi: tokenAbi,
           functionName: "decimals",
-        } as const);
+        }) as number;
 
         const balance = await publicClient.readContract({
           address: tokenContractAddress as `0x${string}`,
           abi: tokenAbi,
           functionName: "balanceOf",
           args: [address as `0x${string}`],
-        } as const);
+        }) as bigint;
 
         // Format the balance
         const formattedBalance = formatUnits(balance, decimals);
