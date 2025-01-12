@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 
-import { useCreateSession, useLoginWithAbstract, useWriteContractSponsored } from "@abstract-foundation/agw-react";
+import { useCreateSession, useLoginWithAbstract, useWriteContractSponsored, useRevokeSessions } from "@abstract-foundation/agw-react";
 import { createSessionClient, LimitType } from "@abstract-foundation/agw-client/sessions";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -22,19 +22,20 @@ const TransactionDetails = ({ transactionReceipt }) => {
   if (!transactionReceipt) return null;
 
   return (
-    <a
-      href={`https://explorer.testnet.abs.xyz/tx/${transactionReceipt?.transactionHash}`}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <div className="text-center mt-4 w-full">
       <p className="text-sm sm:text-base font-medium font-[family-name:var(--font-roobert)] mb-1">
-        Transaction Status: {transactionReceipt?.status}
+        Mint transaction:&nbsp;
+        <a
+          href={`https://explorer.testnet.abs.xyz/tx/${transactionReceipt?.transactionHash}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-gray-400 font-mono hover:text-white"
+        >
+          {transactionReceipt?.transactionHash?.slice(0, 8)}...
+          {transactionReceipt?.transactionHash?.slice(-6)}
+        </a>
       </p>
-      <p className="text-xs text-gray-400 font-mono">
-        {transactionReceipt?.transactionHash?.slice(0, 8)}...
-        {transactionReceipt?.transactionHash?.slice(-6)}
-      </p>
-    </a>
+    </div>
   );
 };
 
@@ -237,9 +238,13 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
 };
 
 // Wallet connection component
-const WalletConnection = ({ address, logout, writeContractSponsored, transactionReceipt }) => {
+const WalletConnection = ({ address, logout }) => {
   const [activeSession, setActiveSession] = useState(null);
   const [sessionClient, setSessionClient] = useState(null);
+  const [mintTransactionHash, setMintTransactionHash] = useState(null);
+  const { data: mintTransactionReceipt } = useWaitForTransactionReceipt({
+    hash: mintTransactionHash,
+  });
 
   const handleSessionCreated = (session) => {
     setActiveSession(session);
@@ -247,6 +252,10 @@ const WalletConnection = ({ address, logout, writeContractSponsored, transaction
 
   const handleSessionClientCreated = (client) => {
     setSessionClient(client);
+  };
+
+  const handleMintComplete = (hash) => {
+    setMintTransactionHash(hash);
   };
 
   return (
@@ -271,19 +280,19 @@ const WalletConnection = ({ address, logout, writeContractSponsored, transaction
         />
         <WalletActions
           logout={logout}
-          writeContractSponsored={writeContractSponsored}
           address={address}
           activeSession={activeSession}
           sessionClient={sessionClient}
+          onMintComplete={handleMintComplete}
         />
-        <TransactionDetails transactionReceipt={transactionReceipt} />
+        <TransactionDetails transactionReceipt={mintTransactionReceipt} />
       </div>
     </div>
   );
 };
 
 // Wallet action buttons
-const WalletActions = ({ logout, address, sessionClient }) => (
+const WalletActions = ({ logout, address, sessionClient, onMintComplete }) => (
   <div className="flex gap-2 w-full">
     <button
       className="rounded-full border border-solid border-white/20 transition-colors flex items-center justify-center bg-white/10 text-white gap-2 hover:bg-white/20 text-sm h-10 px-5 font-[family-name:var(--font-roobert)] flex-1"
@@ -305,20 +314,23 @@ const WalletActions = ({ logout, address, sessionClient }) => (
       </svg>
       Disconnect
     </button>
-    <SubmitTransactionButton address={address} sessionClient={sessionClient} />
+    <SubmitTransactionButton
+      address={address}
+      sessionClient={sessionClient}
+      onMintComplete={onMintComplete}
+    />
   </div>
 );
 
 // Submit transaction button
-const SubmitTransactionButton = ({ address, sessionClient }) => {
+const SubmitTransactionButton = ({ address, sessionClient, onMintComplete }) => {
   const handleTransaction = async () => {
     if (!sessionClient) return;
 
     try {
-      // Mint the NFT using sessionClient
       const tx = await sessionClient.writeContract({
         abi: parseAbi(["function mint(address,uint256) external"]),
-        address: "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA", // NFT contract
+        address: "0xC4822AbB9F05646A9Ce44EFa6dDcda0Bf45595AA",
         functionName: "mint",
         args: [address, 1],
         paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391",
@@ -327,8 +339,7 @@ const SubmitTransactionButton = ({ address, sessionClient }) => {
         }),
       });
 
-      console.log("Transaction sent:", tx);
-
+      onMintComplete(tx);
     } catch (error) {
       console.error("Error executing transaction:", error);
     }
@@ -349,7 +360,6 @@ const SubmitTransactionButton = ({ address, sessionClient }) => {
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
       >
         <path
           strokeLinecap="round"
