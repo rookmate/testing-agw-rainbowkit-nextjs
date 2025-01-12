@@ -117,6 +117,7 @@ const SessionKeyManager: React.FC<SessionKeyManagerProps> = ({
               constraints: [],
             }
           ],
+          transferPolicies: [],
         },
         paymaster: paymasterContractAddress,
         paymasterInput: getGeneralPaymasterInput({
