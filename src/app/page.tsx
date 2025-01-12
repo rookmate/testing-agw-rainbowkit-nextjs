@@ -130,10 +130,6 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
             }
           ],
         },
-        paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391",
-        paymasterInput: getGeneralPaymasterInput({
-          innerInput: "0x",
-        }),
       });
 
       const sessionKeyData = {
@@ -145,6 +141,8 @@ const SessionKeyManager = ({ address, onSessionCreated, onSessionClientCreated }
       };
 
       // Store session in localStorage
+      // Please store this safely and not on localStorage
+      // Using localStorage for example purposes only
       localStorage.setItem(`session-${address}`, stringify(sessionKeyData));
 
       // Update state
