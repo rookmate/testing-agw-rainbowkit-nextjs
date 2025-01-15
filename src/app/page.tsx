@@ -394,9 +394,12 @@ const SubmitTransactionButton: React.FC<SubmitTransactionButtonProps> = ({
   sessionClient,
   onMintComplete
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const handleTransaction = async () => {
     if (!sessionClient) return;
 
+    setIsProcessing(true);
     try {
       const mintAmount = BigInt("10000000000000000000"); // Mint 10 token units
       const tx = await sessionClient.writeContract({
@@ -408,23 +411,25 @@ const SubmitTransactionButton: React.FC<SubmitTransactionButtonProps> = ({
         paymasterInput: getGeneralPaymasterInput({
           innerInput: "0x",
         }),
-      } as any); // Bypassing the error where paymaster and paymasterInput is not recognized as valid params
+      } as any);
 
       onMintComplete(tx);
     } catch (error) {
       console.error("Error executing transaction:", error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return (
     <button
       className={`rounded-full border border-solid transition-colors flex items-center justify-center text-white gap-2 text-sm h-10 px-5 font-[family-name:var(--font-roobert)] flex-1 w-[140px]
-        ${!sessionClient
+        ${!sessionClient || isProcessing
           ? "bg-gray-500 cursor-not-allowed opacity-50"
           : "bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 border-transparent"
         }`}
       onClick={handleTransaction}
-      disabled={!sessionClient}
+      disabled={!sessionClient || isProcessing}
     >
       <svg
         className="w-4 h-4 flex-shrink-0"
@@ -440,7 +445,7 @@ const SubmitTransactionButton: React.FC<SubmitTransactionButtonProps> = ({
         />
       </svg>
       <span className="w-full text-center">
-        {sessionClient ? 'Gib tokens' : 'Session Required'}
+        {isProcessing ? "Processing..." : sessionClient ? "Gib tokens" : "Session Required"}
       </span>
     </button>
   );
