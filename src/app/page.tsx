@@ -264,41 +264,41 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
     })
   );
 
-  // Fetch token balance
+  const fetchTokenBalance = async () => {
+    if (!address || !publicClient) return;
+
+    try {
+      setIsLoadingTokenBalance(true);
+
+      const decimals = await publicClient.readContract({
+        address: tokenContractAddress as `0x${string}`,
+        abi: tokenAbi,
+        functionName: "decimals",
+      }) as number;
+
+      const balance = await publicClient.readContract({
+        address: tokenContractAddress as `0x${string}`,
+        abi: tokenAbi,
+        functionName: "balanceOf",
+        args: [address as `0x${string}`],
+      }) as bigint;
+
+      const formattedBalance = formatUnits(balance, decimals);
+      setTokenBalance(formattedBalance);
+    } catch (error) {
+      console.error("Error fetching token balance:", error);
+      setTokenBalance("0");
+    } finally {
+      setIsLoadingTokenBalance(false);
+    }
+  };
+
+  // Refetch balance after mint transaction is completed
   useEffect(() => {
-    const fetchTokenBalance = async () => {
-      if (!address || !publicClient) return;
-
-      try {
-        setIsLoadingTokenBalance(true);
-
-        const decimals = await publicClient.readContract({
-          address: tokenContractAddress as `0x${string}`,
-          abi: tokenAbi,
-          functionName: "decimals",
-        }) as number;
-
-        const balance = await publicClient.readContract({
-          address: tokenContractAddress as `0x${string}`,
-          abi: tokenAbi,
-          functionName: "balanceOf",
-          args: [address as `0x${string}`],
-        }) as bigint;
-
-        // Format the balance
-        const formattedBalance = formatUnits(balance, decimals);
-        setTokenBalance(formattedBalance);
-      } catch (error) {
-        console.error("Error fetching token balance:", error);
-        setTokenBalance("0");
-      } finally {
-        setIsLoadingTokenBalance(false);
-      }
-    };
-
-    // Add mintTransactionReceipt to dependency array to refetch after minting
-    fetchTokenBalance();
-  }, [address, publicClient, mintTransactionReceipt]);
+    if (mintTransactionReceipt) {
+      fetchTokenBalance();
+    }
+  }, [mintTransactionReceipt]);
 
   const handleSessionClientCreated = (client: SessionClient | null) => {
     setSessionClient(client);
@@ -306,6 +306,8 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
 
   const handleMintComplete = (hash: `0x${string}`) => {
     setMintTransactionHash(hash);
+    // Trigger balance fetch immediately
+    fetchTokenBalance();
   };
 
   return (
